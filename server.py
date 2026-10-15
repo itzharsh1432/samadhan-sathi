@@ -311,8 +311,30 @@ def create_admin():
     print('Admin creation and promotion are available only from this local command, not public registration.')
     return 0
 
+def bootstrap_admin_from_env():
+    """Create an initial hosted admin only when explicit environment credentials are configured."""
+    email=os.environ.get('SAMADHAN_ADMIN_EMAIL','').strip().lower()
+    password=os.environ.get('SAMADHAN_ADMIN_PASSWORD','')
+    name=(os.environ.get('SAMADHAN_ADMIN_NAME','System Administrator').strip() or 'System Administrator')[:100]
+    if not email and not password:
+        return
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+',email) or len(password)<14 or len(password)>128:
+        print('Hosted admin was not created: set a valid SAMADHAN_ADMIN_EMAIL and a 14–128 character SAMADHAN_ADMIN_PASSWORD.')
+        return
+    with connect() as d:
+        existing=d.execute('SELECT id,role FROM users WHERE email=?',(email,)).fetchone()
+        if existing:
+            if existing['role']=='admin':
+                print('Hosted admin already exists; no account or password was changed.')
+            else:
+                print('Hosted admin was not created: this email already belongs to a citizen. Use a different admin email.')
+            return
+        d.execute('INSERT INTO users VALUES(?,?,?,?,?,?)',(str(uuid.uuid4()),name,email,password_hash(password),'admin',now()))
+    print('Hosted administrator account created from configured environment variables.')
+
 if __name__=='__main__':
     init_db()
     if '--create-admin' in sys.argv: raise SystemExit(create_admin())
+    bootstrap_admin_from_env()
     print(f'Samadhan Sathi running at http://{HOST}:{PORT} (SQLite: {DB_PATH})')
     ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()
