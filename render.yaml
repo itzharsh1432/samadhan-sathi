@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: samadhan-sathi
+    runtime: python
+    plan: free
+    buildCommand: python --version
+    startCommand: python server.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: SAMADHAN_ADMIN_EMAIL
+        sync: false
+      - key: SAMADHAN_ADMIN_PASSWORD
+        sync: false
+      - key: SAMADHAN_ADMIN_NAME
+        value: System Administrator
