@@ -202,7 +202,10 @@
   "Location found:": "स्थान मिल गया:",
   "Location not added.": "स्थान नहीं जोड़ा गया।",
   "Requesting your location from the browser…": "ब्राउज़र से आपके स्थान का अनुरोध किया जा रहा है…",
-  "Please review this suggestion.": "कृपया इस सुझाव की जाँच करें।"
+  "Please review this suggestion.": "कृपया इस सुझाव की जाँच करें।",
+  "View city stats & map": "शहर के आँकड़े और मानचित्र देखें",
+  "Current progress across the queue": "सभी शिकायतों की वर्तमान स्थिति",
+  "View city stats and map": "शहर के आँकड़े और मानचित्र देखें"
 };
   const HI_TO_EN = Object.fromEntries(Object.entries(HI).map(([en,hi]) => [hi,en]));
   function localized(value, lang) {
