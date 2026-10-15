@@ -68,6 +68,13 @@ python3 server.py
 
 Then open **http://127.0.0.1:3000** in your browser. Keep the terminal open while the server is running. The SQLite database file is created locally on first startup and is excluded from Git.
 
+## Troubleshooting sign-in
+
+- **New citizen on this copy:** choose **Sign in → Create a citizen account** and register with a valid email and a password of at least 12 characters.
+- **Account made in the visual preview or another project folder:** those accounts are separate from this version's SQLite database. Register again in this local version; accounts are not automatically shared between previews, databases, or project folders.
+- **Existing account suddenly not found:** start `server.py` from the same folder every time and keep the same `samadhan_sathi.sqlite3` file. Do not delete the database file; it stores account and complaint records.
+- **Admin sign-in:** admin accounts are separate from citizen accounts and must be provisioned in the SQLite database used by this running server (see the admin setup section below).
+
 ## Create the first administrator
 
 Stop the server, then run:
