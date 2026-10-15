@@ -68,6 +68,18 @@ python3 server.py
 
 Then open **http://127.0.0.1:3000** in your browser. Keep the terminal open while the server is running. The SQLite database file is created locally on first startup and is excluded from Git.
 
+## Deploy a public preview on Render
+
+The repository includes `render.yaml` for a free web-service preview.
+
+1. Open the [Render Dashboard](https://dashboard.render.com/) and sign in.
+2. Choose **New + → Blueprint**, connect GitHub if asked, and select `itzharsh1432/samadhan-sathi`.
+3. Review the Blueprint settings and create/deploy the service. Render reads the settings from `render.yaml`.
+4. For admin access, set the service environment variables `SAMADHAN_ADMIN_EMAIL` and `SAMADHAN_ADMIN_PASSWORD`. Use a valid email and a unique password of at least 14 characters. Keep the password private; never add it to GitHub. `SAMADHAN_ADMIN_NAME` is optional. Restart/redeploy after adding variables. At startup, the app creates an admin only if that email does not already exist; it will not promote an existing citizen account.
+5. When deployment succeeds, open the `onrender.com` URL shown in the Render service dashboard. The health endpoint is `/api/health`.
+
+**Important preview limitation:** the free Render service uses temporary storage. This app's SQLite accounts and complaint records can be erased when the service restarts, redeploys, or spins down after inactivity. The first visit after spin-down may take about a minute. Use demo/test data only—not real citizens' personal information. For durable complaint records, the app needs a persistent database setup before real-world use.
+
 ## Troubleshooting sign-in
 
 - **New citizen on this copy:** choose **Sign in → Create a citizen account** and register with a valid email and a password of at least 12 characters.
