@@ -23,7 +23,7 @@ def init_db():
         d.executescript('''
         CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('citizen','admin')), created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT, csrf TEXT NOT NULL, expires REAL NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
-        CREATE TABLE IF NOT EXISTS complaints(id TEXT PRIMARY KEY, reference_id TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL, locality TEXT NOT NULL, landmark TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'Submitted', department TEXT NOT NULL DEFAULT 'Not confirmed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, latitude REAL, longitude REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+        CREATE TABLE IF NOT EXISTS complaints(id TEXT PRIMARY KEY, reference_id TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL, locality TEXT NOT NULL, landmark TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'Submitted', department TEXT NOT NULL DEFAULT 'Not confirmed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, latitude REAL, longitude REAL, public_location INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(user_id) REFERENCES users(id));
         CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, complaint_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT NOT NULL, actor_id TEXT, actor_role TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT, actor_role TEXT NOT NULL, complaint_id TEXT, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, complaint_id TEXT, title TEXT NOT NULL, message TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
@@ -37,6 +37,8 @@ def init_db():
             d.execute('ALTER TABLE complaints ADD COLUMN latitude REAL')
         if 'longitude' not in complaint_columns:
             d.execute('ALTER TABLE complaints ADD COLUMN longitude REAL')
+        if 'public_location' not in complaint_columns:
+            d.execute('ALTER TABLE complaints ADD COLUMN public_location INTEGER NOT NULL DEFAULT 0')
         d.execute('CREATE INDEX IF NOT EXISTS complaints_location_idx ON complaints(latitude, longitude)')
 
 def password_hash(password, salt=None):
@@ -121,6 +123,22 @@ class Handler(BaseHTTPRequestHandler):
                 with connect() as d: d.execute('SELECT 1')
                 return self.send_json(200,{'ok':True,'database':'connected','engine':'SQLite'})
             except Exception: return self.send_json(503,{'ok':False,'database':'unavailable'})
+        # Public analytics intentionally expose only aggregate counts, never complaint text or account details.
+        if path=='/api/public/insights':
+            with connect() as d:
+                row=d.execute("SELECT count(*) total, sum(status IN ('Submitted','Under Review')) awaiting_review, sum(status IN ('Assigned','In Progress')) active, sum(status='Resolved') resolved, sum(status='Reopened') reopened FROM complaints").fetchone()
+                cats=d.execute('SELECT category,count(*) count FROM complaints GROUP BY category ORDER BY count DESC, category').fetchall()
+                status_rows=d.execute('SELECT status,count(*) count FROM complaints GROUP BY status ORDER BY count DESC, status').fetchall()
+                localities=d.execute('SELECT locality,count(*) count FROM complaints GROUP BY locality ORDER BY count DESC, locality LIMIT 8').fetchall()
+                monthly=d.execute("SELECT substr(created_at,1,7) month,count(*) count FROM complaints GROUP BY substr(created_at,1,7) ORDER BY month DESC LIMIT 6").fetchall()
+            return self.send_json(200,{'stats':{k:(row[k] or 0) for k in row.keys()},'categories':[dict(x) for x in cats],'statuses':[dict(x) for x in status_rows],'localities':[dict(x) for x in localities],'monthly':list(reversed([dict(x) for x in monthly]))})
+        if path=='/api/public/map-data':
+            # Only exact coordinates with a separate, explicit public-map consent are returned.
+            with connect() as d:
+                rows=d.execute("SELECT reference_id,category,locality,status,latitude,longitude,updated_at FROM complaints WHERE public_location=1 AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY updated_at DESC LIMIT 500").fetchall()
+                total=d.execute('SELECT count(*) FROM complaints').fetchone()[0]
+                shared=d.execute('SELECT count(*) FROM complaints WHERE public_location=1 AND latitude IS NOT NULL AND longitude IS NOT NULL').fetchone()[0]
+            return self.send_json(200,{'complaints':[dict(x) for x in rows],'total':total,'locatedCount':shared})
         if path in ['/api/auth/me','/api/auth/csrf']:
             user=self.ensure_session(); csrf=getattr(self,'session_csrf',None)
             if not csrf:
@@ -228,7 +246,7 @@ class Handler(BaseHTTPRequestHandler):
             if len(title)<5 or len(title)>120 or len(desc)<15 or len(desc)>4000 or cat not in CATEGORIES or len(locality)<2 or len(locality)>120 or len(landmark)>200:return self.send_json(400,{'error':'Check the complaint fields and try again.'})
             cid=str(uuid.uuid4()); ref='SS-GWL-'+secrets.token_hex(3).upper(); stamp=now()
             with connect() as d:
-                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at,latitude,longitude) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp,latitude,longitude))
+                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at,latitude,longitude,public_location) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp,latitude,longitude,1 if data.get('publicLocation') is True and latitude is not None and longitude is not None else 0))
                 d.execute('INSERT INTO history(complaint_id,status,note,actor_id,actor_role,created_at) VALUES(?,?,?,?,?,?)',(cid,'Submitted','Complaint submitted by citizen.',user['id'],'citizen',stamp))
                 d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],'citizen',cid,'Complaint submitted','',json.dumps({'referenceId':ref}),stamp))
             with connect() as d: row=d.execute('SELECT c.*,u.name owner_name FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.id=?',(cid,)).fetchone()
