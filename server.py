@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Samadhan Sathi local full-stack server (Python standard library + SQLite)."""
-import hashlib, hmac, json, os, re, secrets, sqlite3, sys, time, uuid
+import hashlib, hmac, json, math, os, re, secrets, sqlite3, sys, time, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
@@ -23,7 +23,7 @@ def init_db():
         d.executescript('''
         CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('citizen','admin')), created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id TEXT, csrf TEXT NOT NULL, expires REAL NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
-        CREATE TABLE IF NOT EXISTS complaints(id TEXT PRIMARY KEY, reference_id TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL, locality TEXT NOT NULL, landmark TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'Submitted', department TEXT NOT NULL DEFAULT 'Not confirmed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id));
+        CREATE TABLE IF NOT EXISTS complaints(id TEXT PRIMARY KEY, reference_id TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL, locality TEXT NOT NULL, landmark TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'Submitted', department TEXT NOT NULL DEFAULT 'Not confirmed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, latitude REAL, longitude REAL, FOREIGN KEY(user_id) REFERENCES users(id));
         CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, complaint_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT NOT NULL, actor_id TEXT, actor_role TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT, actor_role TEXT NOT NULL, complaint_id TEXT, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, complaint_id TEXT, title TEXT NOT NULL, message TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
@@ -31,6 +31,13 @@ def init_db():
         CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
         CREATE INDEX IF NOT EXISTS history_complaint_idx ON history(complaint_id, created_at DESC);
         ''')
+        # Upgrade an existing local SQLite database without deleting saved complaints.
+        complaint_columns = {row['name'] for row in d.execute('PRAGMA table_info(complaints)').fetchall()}
+        if 'latitude' not in complaint_columns:
+            d.execute('ALTER TABLE complaints ADD COLUMN latitude REAL')
+        if 'longitude' not in complaint_columns:
+            d.execute('ALTER TABLE complaints ADD COLUMN longitude REAL')
+        d.execute('CREATE INDEX IF NOT EXISTS complaints_location_idx ON complaints(latitude, longitude)')
 
 def password_hash(password, salt=None):
     salt = salt or secrets.token_bytes(16)
@@ -42,7 +49,7 @@ def verify_password(password, encoded):
     except Exception: return False
 
 def public_user(row): return {'id':row['id'],'name':row['name'],'email':row['email'],'role':row['role']}
-def public_complaint(row): return {'id':row['id'],'referenceId':row['reference_id'],'title':row['title'],'description':row['description'],'category':row['category'],'locality':row['locality'],'landmark':row['landmark'],'status':row['status'],'department':row['department'],'createdAt':row['created_at'],'updatedAt':row['updated_at'],'ownerName':row['owner_name'] if 'owner_name' in row.keys() else None}
+def public_complaint(row): return {'id':row['id'],'referenceId':row['reference_id'],'title':row['title'],'description':row['description'],'category':row['category'],'locality':row['locality'],'landmark':row['landmark'],'status':row['status'],'department':row['department'],'createdAt':row['created_at'],'updatedAt':row['updated_at'],'latitude':row['latitude'] if 'latitude' in row.keys() else None,'longitude':row['longitude'] if 'longitude' in row.keys() else None,'ownerName':row['owner_name'] if 'owner_name' in row.keys() else None}
 def fallback_suggestion(title, desc, language='en'):
     low=(title+' '+desc).lower(); cat='Other'
     for words, category in [(['pothole','road','street','asphalt'],'Roads & Potholes'),(['garbage','waste','trash','sanitation'],'Garbage & Sanitation'),(['water','tap','supply'],'Water Supply'),(['drain','sewer','overflow','flood'],'Drainage'),(['light','lamp','streetlight'],'Streetlights'),(['traffic','footpath','park'],'Traffic & Public Spaces'),(['building','bench','infrastructure'],'Public Infrastructure')]:
@@ -144,8 +151,18 @@ class Handler(BaseHTTPRequestHandler):
             if not self.require_auth(admin=True): return
             with connect() as d:
                 row=d.execute("SELECT count(*) total, sum(status IN ('Submitted','Under Review')) awaiting_review, sum(status IN ('Assigned','In Progress')) active, sum(status='Resolved') resolved, sum(status='Reopened') reopened FROM complaints").fetchone()
-                cats=d.execute('SELECT category,count(*) count FROM complaints GROUP BY category ORDER BY count DESC').fetchall()
-            return self.send_json(200,{'stats':{k:(row[k] or 0) for k in row.keys()},'categories':[dict(x) for x in cats]})
+                cats=d.execute('SELECT category,count(*) count FROM complaints GROUP BY category ORDER BY count DESC, category').fetchall()
+                status_rows=d.execute('SELECT status,count(*) count FROM complaints GROUP BY status ORDER BY count DESC, status').fetchall()
+                localities=d.execute('SELECT locality,count(*) count FROM complaints GROUP BY locality ORDER BY count DESC, locality LIMIT 8').fetchall()
+                monthly=d.execute("SELECT substr(created_at,1,7) month,count(*) count FROM complaints GROUP BY substr(created_at,1,7) ORDER BY month DESC LIMIT 6").fetchall()
+            return self.send_json(200,{'stats':{k:(row[k] or 0) for k in row.keys()},'categories':[dict(x) for x in cats],'statuses':[dict(x) for x in status_rows],'localities':[dict(x) for x in localities],'monthly':list(reversed([dict(x) for x in monthly]))})
+        if path=='/api/admin/map-data':
+            if not self.require_auth(admin=True): return
+            with connect() as d:
+                rows=d.execute("SELECT reference_id,title,category,locality,status,department,latitude,longitude,created_at,updated_at FROM complaints WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY updated_at DESC LIMIT 500").fetchall()
+                total=d.execute('SELECT count(*) FROM complaints').fetchone()[0]
+                located=d.execute('SELECT count(*) FROM complaints WHERE latitude IS NOT NULL AND longitude IS NOT NULL').fetchone()[0]
+            return self.send_json(200,{'complaints':[dict(x) for x in rows],'total':total,'locatedCount':located,'withoutLocation':max(0,total-located)})
         if path=='/api/admin/audit':
             if not self.require_auth(admin=True):return
             with connect() as d: rows=d.execute('SELECT a.*,u.name AS actor,c.reference_id FROM audit a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN complaints c ON c.id=a.complaint_id ORDER BY a.id DESC LIMIT 200').fetchall()
@@ -201,10 +218,17 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/complaints' and method=='POST':
             if user['role']!='citizen':return self.send_json(403,{'error':'Only citizens can submit complaints.'})
             title=str(data.get('title','')).strip(); desc=str(data.get('description','')).strip(); cat=data.get('category'); locality=str(data.get('locality','')).strip(); landmark=str(data.get('landmark','')).strip()
+            latitude=longitude=None; raw_lat=data.get('latitude'); raw_lon=data.get('longitude')
+            if not (raw_lat is None and raw_lon is None):
+                try:
+                    latitude=float(raw_lat); longitude=float(raw_lon)
+                    if not math.isfinite(latitude) or not math.isfinite(longitude) or not (-90<=latitude<=90) or not (-180<=longitude<=180): raise ValueError()
+                except (TypeError,ValueError):
+                    return self.send_json(400,{'error':'Location coordinates are invalid. Use the location button or leave both coordinates empty.'})
             if len(title)<5 or len(title)>120 or len(desc)<15 or len(desc)>4000 or cat not in CATEGORIES or len(locality)<2 or len(locality)>120 or len(landmark)>200:return self.send_json(400,{'error':'Check the complaint fields and try again.'})
             cid=str(uuid.uuid4()); ref='SS-GWL-'+secrets.token_hex(3).upper(); stamp=now()
             with connect() as d:
-                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp))
+                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at,latitude,longitude) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp,latitude,longitude))
                 d.execute('INSERT INTO history(complaint_id,status,note,actor_id,actor_role,created_at) VALUES(?,?,?,?,?,?)',(cid,'Submitted','Complaint submitted by citizen.',user['id'],'citizen',stamp))
                 d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],'citizen',cid,'Complaint submitted','',json.dumps({'referenceId':ref}),stamp))
             with connect() as d: row=d.execute('SELECT c.*,u.name owner_name FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.id=?',(cid,)).fetchone()
