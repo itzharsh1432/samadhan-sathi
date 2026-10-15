@@ -2,6 +2,8 @@
 
 **A civic grievance reporting and tracking website for Gwalior, Madhya Pradesh.**
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/itzharsh1432/samadhan-sathi)
+
 Samadhan Sathi gives citizens a single place to report local problems—such as potholes, garbage, drainage, water supply, and streetlights—and follow their status. Administrators can review submissions, assign departments, update progress, and see patterns across complaints.
 
 ## The problem
