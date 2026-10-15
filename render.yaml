@@ -3,6 +3,7 @@ services:
     name: samadhan-sathi
     runtime: python
     plan: free
+    autoDeployTrigger: off
     buildCommand: python --version
     startCommand: python server.py
     healthCheckPath: /api/health
