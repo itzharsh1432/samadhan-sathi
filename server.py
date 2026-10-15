@@ -265,13 +265,33 @@ class Handler(BaseHTTPRequestHandler):
         return self.send_json(404,{'error':'API route not found.'})
 
 def create_admin():
+    """Create the first admin, or explicitly promote/reset one from the local terminal."""
     import getpass
-    email=input('Admin email: ').strip().lower(); name=input('Admin name: ').strip() or 'System Administrator'; password=getpass.getpass('Strong password (at least 14 characters): ')
-    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+',email) or len(password)<14: print('Use a valid email and password of at least 14 characters.'); return 2
-    try:
-        with connect() as d: d.execute('INSERT INTO users VALUES(?,?,?,?,?,?)',(str(uuid.uuid4()),name,email,password_hash(password),'admin',now()))
-        print('Administrator created. Admin accounts cannot be created through public registration.'); return 0
-    except sqlite3.IntegrityError: print('That email already has an account.'); return 2
+    email=input('Admin email: ').strip().lower()
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+',email):
+        print('Enter a valid email address.'); return 2
+    with connect() as d:
+        existing=d.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
+    if existing:
+        phrase='PROMOTE' if existing['role']!='admin' else 'RESET ADMIN'
+        action='promote this existing citizen account to admin and replace its password' if phrase=='PROMOTE' else 'reset this existing administrator password'
+        print(f'This email already belongs to an account ({existing["role"]}).')
+        if input(f'Type {phrase} to {action}; anything else cancels: ').strip()!=phrase:
+            print('Cancelled. No account changes were made.'); return 2
+    name=input('Admin name: ').strip() or (existing['name'] if existing else 'System Administrator')
+    password=getpass.getpass('Strong admin password (at least 14 characters): ')
+    confirm=getpass.getpass('Confirm admin password: ')
+    if len(password)<14 or len(password)>128 or password!=confirm:
+        print('Passwords must match and contain 14 to 128 characters. No account changes were made.'); return 2
+    stamp=now(); encoded=password_hash(password)
+    with connect() as d:
+        if existing:
+            d.execute("UPDATE users SET name=?,password_hash=?,role='admin' WHERE id=?",(name,encoded,existing['id']))
+        else:
+            d.execute('INSERT INTO users VALUES(?,?,?,?,?,?)',(str(uuid.uuid4()),name,email,password_hash(password),'admin',stamp))
+    print('Administrator account ready. Sign in using this email and the password you just entered.')
+    print('Admin creation and promotion are available only from this local command, not public registration.')
+    return 0
 
 if __name__=='__main__':
     init_db()
