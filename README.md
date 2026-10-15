@@ -1,6 +1,84 @@
-# Samadhan Sathi — Civic Grievance Website
+# Samadhan Sathi
 
-Samadhan Sathi is a locally runnable civic complaint website prototype for Gwalior. It includes a Python backend, citizen registration/login, admin login, complaint tracking, status history, audit trail, notifications, and a SQLite database.
+**A civic grievance reporting and tracking website for Gwalior, Madhya Pradesh.**
+
+Samadhan Sathi gives citizens a single place to report local problems—such as potholes, garbage, drainage, water supply, and streetlights—and follow their status. Administrators can review submissions, assign departments, update progress, and see patterns across complaints.
+
+## The problem
+
+Civic problems can be difficult to report and follow up on. Residents may not know whether an issue has been recorded, who is handling it, or whether its status has changed.
+
+## What the website does
+
+### For citizens
+- Create an account and sign in.
+- Submit a complaint with a title, description, category, and locality.
+- Receive a complaint reference number and view the status and update history.
+- Search their own complaints and request that a resolved issue be reopened.
+- Optionally share their current GPS coordinates with a complaint. The browser asks for location permission, and coordinates are attached only when the citizen explicitly opts in.
+
+### For administrators
+- Sign in to a restricted admin account.
+- View and search complaints across users, with filters for status and category.
+- Review a complaint, assign a department, update its status, and add an update note.
+- View dashboard summaries and visual breakdowns by category, status, locality, and month.
+- See GPS-tagged complaints on an interactive map and open directions to a reported location.
+- Export the currently filtered complaint list as a CSV file and inspect the audit trail.
+
+## How it works
+
+1. A citizen registers and submits a report.
+2. The system saves it in the local database and generates a reference ID.
+3. An administrator reviews it and records status or department updates.
+4. The citizen can sign back in to check the recorded progress.
+
+**Project scope:** This is a prototype civic-tech project. It is not connected to Gwalior Municipal Corporation or another government department, and submitting a complaint here does not file an official government grievance.
+
+## Technology
+
+- **Frontend:** HTML, CSS, JavaScript
+- **Backend:** Python standard library HTTP server
+- **Database:** SQLite
+- **Map:** Leaflet with OpenStreetMap tiles
+- **Browser location:** Geolocation API (requires user permission; available on localhost or HTTPS in supported browsers)
+
+No third-party Python packages are required for the current local version. The PostgreSQL schema file is a reference for a possible future migration; the current server uses SQLite.
+
+## Run it locally
+
+Requirements: Python 3.10 or newer.
+
+### Windows
+
+Open Command Prompt in the project folder and run:
+
+```bat
+python --version
+python server.py
+```
+
+If `python` is not recognized, install Python and select **Add Python to PATH** in the installer, then reopen Command Prompt.
+
+### macOS / Linux
+
+```bash
+python3 --version
+python3 server.py
+```
+
+Then open **http://127.0.0.1:3000** in your browser. Keep the terminal open while the server is running. The SQLite database file is created locally on first startup and is excluded from Git.
+
+## Create the first administrator
+
+Stop the server, then run:
+
+```bash
+python server.py --create-admin
+```
+
+Follow the prompts and choose a unique password of at least 14 characters. If the email already belongs to a citizen account, the command requires an explicit confirmation before promoting it. To reset an existing administrator account, use the same command and follow the `RESET ADMIN` prompt. Restart the server with `python server.py`.
+
+Administrator accounts cannot be created from the public registration form.
 
 ## Project structure
 
@@ -18,23 +96,9 @@ samadhan-sathi/
     └── app.js
 ```
 
-## Run locally
+## Current limitations
 
-1. Install Python 3.10 or newer.
-2. Open a terminal in the repository folder.
-3. Run `python server.py` (on macOS/Linux, `python3 server.py`).
-4. Open http://127.0.0.1:3000.
-
-The SQLite database is created automatically and remains on the local machine. It is deliberately excluded from Git.
-
-## Admin setup
-
-Stop the server and run `python server.py --create-admin`. Enter an admin email and a strong password (at least 14 characters), then confirm the password. If the email already belongs to a citizen account, the command requires you to type `PROMOTE` before it changes that existing account to admin and resets its password. If an existing admin cannot sign in, type `RESET ADMIN` when prompted to reset its password. Restart with `python server.py`. Admin accounts cannot be created or promoted through public registration.
-
-If admin sign-in fails, make sure the server is running from this exact project folder and create/reset the admin account using the command above. The demo credentials in the standalone preview do not work in the real local website.
-
-## Deployment warning
-
-This is a local prototype, not yet an official public service. Do not expose it directly to the public internet or enter sensitive citizen data before a security review and deployment hardening. For a real deployment, configure HTTPS, a persistent managed database or durable storage, secure session settings, backups, monitoring, email verification/password recovery, rate limiting, and privacy/data-retention processes. Review `schema-postgresql-reference.sql` before planning a PostgreSQL migration; the current `server.py` uses SQLite and does not connect to PostgreSQL. GPS is optional; browser geolocation generally works on localhost or HTTPS. Exact coordinates are only saved after the citizen opts in, and the admin map uses Leaflet/OpenStreetMap tiles when internet access is available.
-
-AI-assisted wording/category suggestions use a rule-based fallback and are not official decisions.
+- The project currently stores data in a local SQLite file, not a hosted database. For a multi-user production deployment, use persistent managed storage and review the application's security and deployment configuration first.
+- Map tiles need an internet connection. Complaints without opted-in GPS coordinates still appear in the admin complaint table but cannot be shown as exact map pins.
+- This prototype does not submit reports to a government system, verify identities by email, or provide official service-level guarantees.
+- Do not commit passwords, API keys, the SQLite database, or real citizens' personal information to this public repository.
