@@ -6,3 +6,11 @@
 .map-empty-overlay{z-index:500;background:#ffffffd9;pointer-events:none}
 
 .auth-error{border:1px solid #efc7c4;background:#fff1f0;color:#9f2d29;border-radius:9px;padding:10px 12px;font-size:11px;margin:0 0 13px;line-height:1.5}
+
+/* Persistent Hindi / English language switch */
+.lang-toggle{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:#f5f7fb;flex-shrink:0}
+.lang-toggle button{border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:11px;font-weight:800;padding:6px 9px;line-height:1.1}
+.lang-toggle button.selected{background:var(--navy);color:#fff;box-shadow:0 1px 4px #10264d20}
+.lang-toggle button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.topbar .actions{gap:12px;display:flex;align-items:center}
+@media(max-width:740px){.topbar{padding:0 13px}.topbar .actions{gap:7px}.topbar .dbstatus{display:none}.lang-toggle button{padding:7px 8px}.crumb{max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar .outline{padding:8px 10px;font-size:11px}}
