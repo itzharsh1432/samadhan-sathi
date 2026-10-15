@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS complaints (
   category VARCHAR(50) NOT NULL,
   locality VARCHAR(120) NOT NULL,
   landmark VARCHAR(200),
+  latitude DOUBLE PRECISION CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
+  longitude DOUBLE PRECISION CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
   status VARCHAR(20) NOT NULL DEFAULT 'Submitted' CHECK (status IN ('Submitted','Under Review','Assigned','In Progress','Resolved','Reopened')),
   department VARCHAR(120) NOT NULL DEFAULT 'Not confirmed',
   is_demo BOOLEAN NOT NULL DEFAULT false,
@@ -27,6 +29,7 @@ CREATE INDEX IF NOT EXISTS complaints_user_created_idx ON complaints(user_id, cr
 CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
 CREATE INDEX IF NOT EXISTS complaints_category_idx ON complaints(category);
 CREATE INDEX IF NOT EXISTS complaints_locality_idx ON complaints(locality);
+CREATE INDEX IF NOT EXISTS complaints_location_idx ON complaints(latitude, longitude);
 CREATE TABLE IF NOT EXISTS complaint_history (
   id BIGSERIAL PRIMARY KEY,
   complaint_id UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
