@@ -29,7 +29,9 @@ The SQLite database is created automatically and remains on the local machine. I
 
 ## Admin setup
 
-Stop the server and run `python server.py --create-admin`. Follow the prompts and choose a unique password of at least 14 characters. Restart with `python server.py`. Citizens can register on the public site; administrator self-registration is disabled.
+Stop the server and run `python server.py --create-admin`. Enter an admin email and a strong password (at least 14 characters), then confirm the password. If the email already belongs to a citizen account, the command requires you to type `PROMOTE` before it changes that existing account to admin and resets its password. If an existing admin cannot sign in, type `RESET ADMIN` when prompted to reset its password. Restart with `python server.py`. Admin accounts cannot be created or promoted through public registration.
+
+If admin sign-in fails, make sure the server is running from this exact project folder and create/reset the admin account using the command above. The demo credentials in the standalone preview do not work in the real local website.
 
 ## Deployment warning
 
