@@ -30,7 +30,9 @@ jobs:
       - name: Run unit tests
         run: python -m unittest -v test_priority.py
       - name: Check browser JavaScript syntax
-        run: node --check public/app.js
+        run: |
+          node --check public/app.js
+          node --check public/i18n.js
       - name: Parse CSS
         run: |
           python - <<'PY'
