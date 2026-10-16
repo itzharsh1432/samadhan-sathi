@@ -206,7 +206,7 @@
   "Please review this suggestion.": "कृपया इस सुझाव की जाँच करें।",
   "View city stats & map": "शहर के आँकड़े और मानचित्र देखें",
   "Current progress across the queue": "सभी शिकायतों की वर्तमान स्थिति",
-  "View city stats and map": "शहर के आँकड़े और मानचित्र देखें"
+  "View city stats and map": "शहर के आँकड़े और मानचित्र देखें",
   "COMMUNITY IN ACTION": "समुदाय की सक्रिय भागीदारी",
   "Real people. Real stories. Better communities.": "असली लोग। असली कहानियाँ। बेहतर समुदाय।",
   "See how everyday community action can inspire safer, cleaner, more connected neighbourhoods.": "जानें कि सामुदायिक प्रयास कैसे सुरक्षित, स्वच्छ और अधिक जुड़े हुए पड़ोस बना सकते हैं।",
