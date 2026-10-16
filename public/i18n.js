@@ -220,7 +220,7 @@
   "Swachhata starts with all of us.": "स्वच्छता हम सभी से शुरू होती है।",
   "A short film from India's Central Bureau of Communication about cleanliness and collective action.": "भारत के केंद्रीय संचार ब्यूरो की स्वच्छता और सामूहिक प्रयास पर एक लघु फ़िल्म।",
   "Watch on YouTube ↗": "YouTube पर देखें ↗",
-  "Illustrative community photos from Pexels · Awareness video from the Central Bureau of Communication on YouTube.": "उदाहरण के लिए समुदाय की तस्वीरें: Pexels · जागरूकता वीडियो: YouTube पर केंद्रीय संचार ब्यूरो।",,
+  "Illustrative community photos from Pexels · Awareness video from the Central Bureau of Communication on YouTube.": "उदाहरण के लिए समुदाय की तस्वीरें: Pexels · जागरूकता वीडियो: YouTube पर केंद्रीय संचार ब्यूरो।",
   "Case analytics": "मामलों का विश्लेषण",
   "Public map": "सार्वजनिक मानचित्र",
   "Resolved cases": "समाधान किए गए मामले",
