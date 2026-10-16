@@ -1,0 +1,50 @@
+name: Quality checks
+
+on:
+  push:
+    branches: ["main", "feature/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CSS parser
+        run: python -m pip install tinycss2
+      - name: Compile Python files
+        run: python -m py_compile server.py test_priority.py
+      - name: Run unit tests
+        run: python -m unittest -v test_priority.py
+      - name: Check browser JavaScript syntax
+        run: node --check public/app.js
+      - name: Parse CSS
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tinycss2
+
+          css = Path("public/styles.css").read_text(encoding="utf-8")
+          rules = tinycss2.parse_stylesheet(
+              css, skip_whitespace=True, skip_comments=True
+          )
+          errors = [rule for rule in rules if rule.type == "error"]
+          for error in errors:
+              print(f"CSS parse error at {error.source_line}:{error.source_column}: {error.message}")
+          if errors:
+              raise SystemExit(1)
+          print(f"CSS parsed successfully ({len(rules)} top-level rules).")
+          PY
