@@ -27,6 +27,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, complaint_id TEXT NOT NULL, status TEXT NOT NULL, note TEXT NOT NULL, actor_id TEXT, actor_role TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT, actor_role TEXT NOT NULL, complaint_id TEXT, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, complaint_id TEXT, title TEXT NOT NULL, message TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS complaint_support(id INTEGER PRIMARY KEY AUTOINCREMENT, complaint_id TEXT NOT NULL, user_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(complaint_id,user_id), FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
         CREATE INDEX IF NOT EXISTS complaints_user_idx ON complaints(user_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
         CREATE INDEX IF NOT EXISTS history_complaint_idx ON history(complaint_id, created_at DESC);
@@ -39,6 +40,12 @@ def init_db():
             d.execute('ALTER TABLE complaints ADD COLUMN longitude REAL')
         if 'public_location' not in complaint_columns:
             d.execute('ALTER TABLE complaints ADD COLUMN public_location INTEGER NOT NULL DEFAULT 0')
+        if 'priority' not in complaint_columns:
+            d.execute("ALTER TABLE complaints ADD COLUMN priority TEXT NOT NULL DEFAULT 'Medium'")
+        if 'priority_reason' not in complaint_columns:
+            d.execute("ALTER TABLE complaints ADD COLUMN priority_reason TEXT NOT NULL DEFAULT 'Initial review recommended.'")
+        if 'priority_score' not in complaint_columns:
+            d.execute('ALTER TABLE complaints ADD COLUMN priority_score INTEGER NOT NULL DEFAULT 0')
         d.execute('CREATE INDEX IF NOT EXISTS complaints_location_idx ON complaints(latitude, longitude)')
 
 def password_hash(password, salt=None):
@@ -51,7 +58,23 @@ def verify_password(password, encoded):
     except Exception: return False
 
 def public_user(row): return {'id':row['id'],'name':row['name'],'email':row['email'],'role':row['role']}
-def public_complaint(row): return {'id':row['id'],'referenceId':row['reference_id'],'title':row['title'],'description':row['description'],'category':row['category'],'locality':row['locality'],'landmark':row['landmark'],'status':row['status'],'department':row['department'],'createdAt':row['created_at'],'updatedAt':row['updated_at'],'latitude':row['latitude'] if 'latitude' in row.keys() else None,'longitude':row['longitude'] if 'longitude' in row.keys() else None,'ownerName':row['owner_name'] if 'owner_name' in row.keys() else None}
+def public_complaint(row): return {'priority':row['priority'] if 'priority' in row.keys() else 'Medium','priorityReason':row['priority_reason'] if 'priority_reason' in row.keys() else 'Initial review recommended.','supportCount':row['support_count'] if 'support_count' in row.keys() else 0,'id':row['id'],'referenceId':row['reference_id'],'title':row['title'],'description':row['description'],'category':row['category'],'locality':row['locality'],'landmark':row['landmark'],'status':row['status'],'department':row['department'],'createdAt':row['created_at'],'updatedAt':row['updated_at'],'latitude':row['latitude'] if 'latitude' in row.keys() else None,'longitude':row['longitude'] if 'longitude' in row.keys() else None,'ownerName':row['owner_name'] if 'owner_name' in row.keys() else None}
+def recommend_priority(title, desc, category, locality=''):
+    """Transparent rule-based recommendation; never makes an automatic case decision."""
+    text=(str(title)+' '+str(desc)).lower()
+    score=0; reasons=[]
+    if any(term in text for term in ('electrocution','live wire','building collapse','gas leak','life threatening','people trapped')):
+        score+=8; reasons.append('Potential immediate public-safety risk mentioned')
+    if any(term in text for term in ('open manhole','sewage overflow','major flooding','water contamination','road blocked','school crossing','hospital')):
+        score+=4; reasons.append('Potential significant public access or essential-service impact')
+    if category in ('Water Supply','Drainage'):
+        score+=2; reasons.append('Issue affects an essential civic service')
+    if any(term in text for term in ('many people','entire street','whole area','multiple houses','daily')):
+        score+=1; reasons.append('Description indicates broader or recurring impact')
+    level='Critical' if score>=8 else 'High' if score>=4 else 'Medium' if score>=2 else 'Low'
+    if not reasons: reasons.append('No explicit high-risk indicators found; administrator review is still required')
+    return {'priority':level,'priorityScore':score,'priorityReason':'; '.join(reasons)}
+
 def fallback_suggestion(title, desc, language='en'):
     low=(title+' '+desc).lower(); cat='Other'
     for words, category in [(['pothole','road','street','asphalt'],'Roads & Potholes'),(['garbage','waste','trash','sanitation'],'Garbage & Sanitation'),(['water','tap','supply'],'Water Supply'),(['drain','sewer','overflow','flood'],'Drainage'),(['light','lamp','streetlight'],'Streetlights'),(['traffic','footpath','park'],'Traffic & Public Spaces'),(['building','bench','infrastructure'],'Public Infrastructure')]:
@@ -147,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/complaints':
             user=self.require_auth()
             if not user:return
-            sql='SELECT c.*,u.name AS owner_name FROM complaints c JOIN users u ON u.id=c.user_id'; where=[]; args=[]
+            sql='SELECT c.*,u.name AS owner_name,(SELECT count(*) FROM complaint_support cs WHERE cs.complaint_id=c.id) AS support_count FROM complaints c JOIN users u ON u.id=c.user_id'; where=[]; args=[]
             if user['role']!='admin': where.append('c.user_id=?'); args.append(user['id'])
             if q.get('status') in STATUSES: where.append('c.status=?'); args.append(q['status'])
             if q.get('category') in CATEGORIES: where.append('c.category=?'); args.append(q['category'])
@@ -160,7 +183,7 @@ class Handler(BaseHTTPRequestHandler):
             if not user:return
             ident=unquote(path[len('/api/complaints/'):]); parts=ident.split('/')
             with connect() as d:
-                row=d.execute('SELECT c.*,u.name AS owner_name FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.reference_id=? OR c.id=?',(parts[0],parts[0])).fetchone()
+                row=d.execute('SELECT c.*,u.name AS owner_name,(SELECT count(*) FROM complaint_support cs WHERE cs.complaint_id=c.id) AS support_count FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.reference_id=? OR c.id=?',(parts[0],parts[0])).fetchone()
                 if not row or (user['role']!='admin' and row['user_id']!=user['id']): return self.send_json(404,{'error':'Complaint not found.'})
                 if len(parts)>1 and parts[1]=='reopen': return self.send_json(405,{'error':'Use POST to request reopening.'})
                 history=d.execute('SELECT status,note,actor_role,created_at FROM history WHERE complaint_id=? ORDER BY id DESC',(row['id'],)).fetchall()
@@ -244,12 +267,12 @@ class Handler(BaseHTTPRequestHandler):
                 except (TypeError,ValueError):
                     return self.send_json(400,{'error':'Location coordinates are invalid. Use the location button or leave both coordinates empty.'})
             if len(title)<5 or len(title)>120 or len(desc)<15 or len(desc)>4000 or cat not in CATEGORIES or len(locality)<2 or len(locality)>120 or len(landmark)>200:return self.send_json(400,{'error':'Check the complaint fields and try again.'})
-            cid=str(uuid.uuid4()); ref='SS-GWL-'+secrets.token_hex(3).upper(); stamp=now()
+            priority=recommend_priority(title,desc,cat,locality); cid=str(uuid.uuid4()); ref='SS-GWL-'+secrets.token_hex(3).upper(); stamp=now()
             with connect() as d:
-                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at,latitude,longitude,public_location) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp,latitude,longitude,1 if data.get('publicLocation') is True and latitude is not None and longitude is not None else 0))
+                d.execute('INSERT INTO complaints(id,reference_id,user_id,title,description,category,locality,landmark,status,department,created_at,updated_at,latitude,longitude,public_location,priority,priority_reason,priority_score) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,ref,user['id'],title,desc,cat,locality,landmark,'Submitted','Not confirmed',stamp,stamp,latitude,longitude,1 if data.get('publicLocation') is True and latitude is not None and longitude is not None else 0,priority['priority'],priority['priorityReason'],priority['priorityScore']))
                 d.execute('INSERT INTO history(complaint_id,status,note,actor_id,actor_role,created_at) VALUES(?,?,?,?,?,?)',(cid,'Submitted','Complaint submitted by citizen.',user['id'],'citizen',stamp))
                 d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],'citizen',cid,'Complaint submitted','',json.dumps({'referenceId':ref}),stamp))
-            with connect() as d: row=d.execute('SELECT c.*,u.name owner_name FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.id=?',(cid,)).fetchone()
+            with connect() as d: row=d.execute('SELECT c.*,u.name owner_name,(SELECT count(*) FROM complaint_support cs WHERE cs.complaint_id=c.id) AS support_count FROM complaints c JOIN users u ON u.id=c.user_id WHERE c.id=?',(cid,)).fetchone()
             return self.send_json(201,{'complaint':public_complaint(row)})
         match=re.fullmatch(r'/api/complaints/([^/]+)/reopen',path)
         if match and method=='POST':
@@ -260,6 +283,20 @@ class Handler(BaseHTTPRequestHandler):
                 if not row or (user['role']!='admin' and row['user_id']!=user['id']):return self.send_json(404,{'error':'Complaint not found.'})
                 stamp=now(); d.execute("UPDATE complaints SET status='Reopened',updated_at=? WHERE id=?",(stamp,row['id'])); d.execute('INSERT INTO history(complaint_id,status,note,actor_id,actor_role,created_at) VALUES(?,?,?,?,?,?)',(row['id'],'Reopened',reason,user['id'],user['role'],stamp)); d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],user['role'],row['id'],'Complaint reopened',reason,'{}',stamp)); d.execute('INSERT INTO notifications(user_id,complaint_id,title,message,created_at) VALUES(?,?,?,?,?)',(row['user_id'],row['id'],'Complaint reopened',f'Your complaint {row["reference_id"]} was reopened.',stamp))
             return self.send_json(200,{'ok':True})
+        match=re.fullmatch(r'/api/complaints/([^/]+)/support',path)
+        if match and method=='POST':
+            if user['role']!='citizen':return self.send_json(403,{'error':'Only citizen accounts can support an issue.'})
+            ident=unquote(match.group(1))
+            with connect() as d:
+                row=d.execute('SELECT id,user_id,status FROM complaints WHERE reference_id=? OR id=?',(ident,ident)).fetchone()
+                if not row:return self.send_json(404,{'error':'Complaint not found.'})
+                if row['user_id']==user['id']:return self.send_json(400,{'error':'You cannot support your own complaint.'})
+                if row['status']=='Resolved':return self.send_json(400,{'error':'Resolved complaints cannot receive new support.'})
+                try:d.execute('INSERT INTO complaint_support(complaint_id,user_id,created_at) VALUES(?,?,?)',(row['id'],user['id'],now()))
+                except sqlite3.IntegrityError:return self.send_json(409,{'error':'You have already supported this complaint.'})
+                count=d.execute('SELECT count(*) FROM complaint_support WHERE complaint_id=?',(row['id'],)).fetchone()[0]
+                d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],'citizen',row['id'],'Community support added','','{}',now()))
+            return self.send_json(201,{'ok':True,'supportCount':count})
         match=re.fullmatch(r'/api/admin/complaints/([^/]+)',path)
         if match and method=='PATCH':
             if user['role']!='admin':return self.send_json(403,{'error':'Administrator access required.'})
