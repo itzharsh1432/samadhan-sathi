@@ -14,3 +14,9 @@
 .lang-toggle button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .topbar .actions{gap:12px;display:flex;align-items:center}
 @media(max-width:740px){.topbar{padding:0 13px}.topbar .actions{gap:7px}.topbar .dbstatus{display:none}.lang-toggle button{padding:7px 8px}.crumb{max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar .outline{padding:8px 10px;font-size:11px}}
+
+.priority{display:inline-flex;align-items:center;border-radius:20px;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap}
+.priority-critical{background:#ffe4e4;color:#a51f2b}
+.priority-high{background:#fff0df;color:#9b4b08}
+.priority-medium{background:#fff6d8;color:#85630b}
+.priority-low{background:#e6f5ed;color:#19704a}
