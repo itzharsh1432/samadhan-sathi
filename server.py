@@ -68,7 +68,7 @@ def recommend_priority(title, desc, category, locality=''):
     if any(term in text for term in ('open manhole','sewage overflow','major flooding','water contamination','road blocked','school crossing','hospital')):
         score+=4; reasons.append('Potential significant public access or essential-service impact')
     if category in ('Water Supply','Drainage'):
-        score+=1; reasons.append('Issue affects an essential civic service')
+        score+=2; reasons.append('Issue affects an essential civic service')
     if any(term in text for term in ('many people','entire street','whole area','multiple houses','daily')):
         score+=1; reasons.append('Description indicates broader or recurring impact')
     level='Critical' if score>=8 else 'High' if score>=4 else 'Medium' if score>=2 else 'Low'
