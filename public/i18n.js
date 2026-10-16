@@ -207,6 +207,20 @@
   "View city stats & map": "शहर के आँकड़े और मानचित्र देखें",
   "Current progress across the queue": "सभी शिकायतों की वर्तमान स्थिति",
   "View city stats and map": "शहर के आँकड़े और मानचित्र देखें"
+  "COMMUNITY IN ACTION": "समुदाय की सक्रिय भागीदारी",
+  "Real people. Real stories. Better communities.": "असली लोग। असली कहानियाँ। बेहतर समुदाय।",
+  "See how everyday community action can inspire safer, cleaner, more connected neighbourhoods.": "जानें कि सामुदायिक प्रयास कैसे सुरक्षित, स्वच्छ और अधिक जुड़े हुए पड़ोस बना सकते हैं।",
+  "COMMUNITY CLEAN-UP": "सामुदायिक सफ़ाई अभियान",
+  "Cleaner streets start together": "साफ़ सड़कें मिलकर बनती हैं",
+  "COMMUNITY VOICES": "समुदाय की आवाज़ें",
+  "Local people, shared solutions": "स्थानीय लोग, साझा समाधान",
+  "SUPPORT IN ACTION": "मदद की पहल",
+  "Helping hands make a difference": "मदद के प्रयास बदलाव लाते हैं",
+  "WATCH & GET INSPIRED": "देखें और प्रेरित हों",
+  "Swachhata starts with all of us.": "स्वच्छता हम सभी से शुरू होती है।",
+  "A short film from India's Central Bureau of Communication about cleanliness and collective action.": "भारत के केंद्रीय संचार ब्यूरो की स्वच्छता और सामूहिक प्रयास पर एक लघु फ़िल्म।",
+  "Watch on YouTube ↗": "YouTube पर देखें ↗",
+  "Illustrative community photos from Pexels · Awareness video from the Central Bureau of Communication on YouTube.": "उदाहरण के लिए समुदाय की तस्वीरें: Pexels · जागरूकता वीडियो: YouTube पर केंद्रीय संचार ब्यूरो।",
 };
   const HI_TO_EN = Object.fromEntries(Object.entries(HI).map(([en,hi]) => [hi,en]));
   function localized(value, lang) {
