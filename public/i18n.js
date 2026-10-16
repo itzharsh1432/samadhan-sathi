@@ -3,6 +3,7 @@
   const HI = {
   "WORKSPACE": "कार्य क्षेत्र",
   "CIVIC INTELLIGENCE": "नागरिक सेवा जानकारी",
+  "INDIA • CIVIC TECH": "भारत • नागरिक तकनीक",
   "Overview": "मुख्य पृष्ठ",
   "Report an issue": "समस्या दर्ज करें",
   "Complaints": "शिकायतें",
@@ -23,7 +24,7 @@
   "Prototype notice": "प्रोटोटाइप सूचना",
   "This is an independent civic-tech platform and is not connected to any government department.": "यह एक स्वतंत्र नागरिक-तकनीक प्लेटफ़ॉर्म है और किसी सरकारी विभाग से जुड़ा नहीं है।",
   "Samadhan Sathi · Civic grievance assistant · Keep your complaint reference safe.": "समाधान साथी · नागरिक शिकायत सहायक · अपनी शिकायत का संदर्भ नंबर सुरक्षित रखें।",
-  "GWALIOR · CIVIC SERVICE": "ग्वालियर · नागरिक सेवा",
+  "GWALIOR, INDIA · CIVIC SERVICE": "ग्वालियर, भारत · नागरिक सेवा",
   "Better communities": "बेहतर समुदाय",
   "start with being heard.": "अपनी बात सुने जाने से शुरू होते हैं।",
   "Report a civic issue, track progress, and help make local services more accountable.": "नागरिक समस्या दर्ज करें, उसकी प्रगति देखें और स्थानीय सेवाओं को अधिक जवाबदेह बनाने में मदद करें।",
