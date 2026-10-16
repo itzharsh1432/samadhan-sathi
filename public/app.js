@@ -1,7 +1,7 @@
 const $ = s => document.querySelector(s);
 const categories = ['Roads & Potholes','Garbage & Sanitation','Water Supply','Drainage','Streetlights','Public Infrastructure','Traffic & Public Spaces','Other'];
 const statuses = ['Submitted','Under Review','Assigned','In Progress','Resolved','Reopened'];
-let csrfToken = ''; let currentUser = null; let page = 'overview'; let cachedComplaints = []; let selectedCoordinates = null; let adminMapInstance = null;
+let csrfToken = ''; let currentUser = null; let page = 'overview'; let cachedComplaints = []; let selectedCoordinates = null; let adminMapInstance = null; let publicMapInstance = null;
 let currentLang = (() => { try { return localStorage.getItem('ss-language') === 'hi' ? 'hi' : 'en'; } catch (_) { return 'en'; } })();
 const localized = value => window.SamadhanI18n ? window.SamadhanI18n.localized(value,currentLang) : String(value ?? '');
 function translateDOM(root=document.body){ if(window.SamadhanI18n) window.SamadhanI18n.translateDOM(root,currentLang); }
