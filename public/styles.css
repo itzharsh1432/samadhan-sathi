@@ -155,3 +155,215 @@ td{line-height:1.6}
     transition-duration:.01ms!important;
   }
 }
+
+
+/* Metis (Colorlib) visual system adapted for India-focused civic tech */
+/* Reference: https://metis.colorlib.com/ — site-specific CSS, not bundled template source.
+   Keep this app's existing no-framework markup and interactions intact. */
+:root{
+  --bg:#f6f8fc;
+  --ink:#1d2939;
+  --muted:#66758a;
+  --line:#e3e8f0;
+  --shadow:0 2px 8px rgba(23,38,65,.025);
+  --navy:#14243e;
+  --navy2:#203b61;
+  --teal:#315bd6;
+}
+/* Neutral, border-led dashboard shell */
+body{
+  background:#f6f8fc;
+  color:#1d2939;
+}
+.sidebar{
+  color:#25334a;
+  background:#fff;
+  border-right:1px solid #e4e9f1;
+  box-shadow:none;
+}
+.brand{padding-bottom:26px}
+.brandmark{
+  background:linear-gradient(to bottom,#ff9933 0 33.333%,#f8fafc 33.333% 66.666%,#138808 66.666% 100%);
+  color:#203b61;
+  border:1px solid #e6ebf2;
+  box-shadow:none;
+  border-radius:12px;
+  position:relative;
+}
+.brandmark::after{
+  content:"";
+  position:absolute;
+  inset:9px;
+  border:1px solid rgba(32,59,97,.25);
+  border-radius:50%;
+  pointer-events:none;
+}
+.brand:hover .brandmark{transform:translateY(-1px);box-shadow:0 4px 12px rgba(23,38,65,.08)}
+.brand b{color:#1d2939}
+.brand small{color:#748198;font-size:9px;letter-spacing:1.05px}
+.navlabel{color:#8792a5}
+.sidebar nav{gap:4px}
+.sidebar nav button{
+  color:#56657a;
+  border:1px solid transparent;
+  border-radius:9px;
+  padding:10px 12px;
+}
+.sidebar nav button:hover{
+  color:#284fae;
+  background:#f5f7fc;
+  transform:none;
+}
+.sidebar nav button.active{
+  color:#244bb6;
+  background:#edf2ff;
+  border-color:#e0e8ff;
+  box-shadow:inset 3px 0 #315bd6;
+}
+.demo-note{
+  color:#66758a;
+  background:#f8fafc;
+  border:1px solid #e4e9f1;
+  border-top:3px solid transparent;
+  border-image:linear-gradient(90deg,#ff9933 0 33.333%,#f8fafc 33.333% 66.666%,#138808 66.666% 100%) 1;
+}
+.demo-note b{color:#1d2939}
+.profile b{color:#1d2939}
+.profile small{color:#77859a}
+.avatar{background:#edf2ff;color:#244bb6}
+.main{background:#f6f8fc}
+.topbar{
+  position:sticky;
+  background:rgba(255,255,255,.96);
+  border-bottom:1px solid #e4e9f1;
+  box-shadow:none;
+  backdrop-filter:blur(12px);
+}
+.topbar::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,#ff9933 0 33.333%,#f8fafc 33.333% 66.666%,#138808 66.666% 100%);
+  pointer-events:none;
+}
+.crumb{color:#78869b}
+.crumb b{color:#1d2939}
+.lang-toggle{background:#f7f9fc;border-color:#e1e7f0}
+.lang-toggle button.selected{background:#203b61;box-shadow:none}
+.dbstatus{background:#edf8f2;color:#18734b}
+.dbstatus i{background:#198754}
+.primary{
+  color:#fff;
+  background:#315bd6;
+  box-shadow:none;
+}
+.primary:hover{
+  color:#fff;
+  background:#244bb6;
+  box-shadow:0 3px 9px rgba(49,91,214,.13);
+}
+.outline{background:#fff;border-color:#dce3ed;color:#34445c}
+.outline:hover{background:#f6f8fc;border-color:#c7d2e3;box-shadow:none}
+.content{max-width:1500px}
+.hero{
+  border:1px solid #1c3760;
+  border-radius:15px;
+  background:
+    radial-gradient(circle at 92% 15%,rgba(19,136,8,.16),transparent 18rem),
+    radial-gradient(circle at 74% 0%,rgba(255,153,51,.15),transparent 17rem),
+    linear-gradient(125deg,#14243e 0%,#193557 70%,#214769 100%);
+  box-shadow:none;
+}
+.hero .eyebrow{color:#ffc58a}
+.hero::after{
+  border-color:rgba(255,255,255,.17);
+  box-shadow:0 0 0 28px rgba(255,255,255,.022),0 0 0 58px rgba(255,255,255,.016);
+}
+.orb{border-color:rgba(255,255,255,.2)}
+.artcard{border-radius:12px;box-shadow:none}
+.artcard span{background:linear-gradient(135deg,#315bd6,#244bb6);box-shadow:none}
+.notice{
+  background:#fffaf2;
+  border:1px solid #f2e7d7;
+  border-left:3px solid #ff9933;
+  border-radius:9px;
+  box-shadow:none;
+  color:#71552e;
+}
+.notice b{color:#5e4523}
+.pagehead h2{color:#1d2939;font-weight:750;letter-spacing:-.55px}
+.pagehead p{color:#68778d}
+.eyebrow{letter-spacing:1.4px}
+.card{
+  border:1px solid #e0e6ef;
+  border-radius:12px;
+  box-shadow:none;
+}
+.stat{
+  border-radius:12px;
+  box-shadow:none;
+}
+.stat::before{
+  height:2px;
+  background:#315bd6;
+  opacity:1;
+}
+.statlabel{color:#6b788c}
+.statvalue{color:#1d2939;font-size:27px;letter-spacing:-.7px}
+.statfoot{color:#7c899b}
+.panel{padding:19px}
+.panelhead h3{color:#25334a;font-size:13px;font-weight:750}
+.panelhead p{color:#7b879a}
+.field label{color:#4a5870}
+.field input,.field select,.field textarea,.toolbar input,.toolbar select{
+  border-color:#dce3ed;
+  border-radius:8px;
+  color:#1d2939;
+  background:#fff;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:#6686ed;
+  box-shadow:0 0 0 3px rgba(49,91,214,.11);
+}
+.field input:hover,.field select:hover,.field textarea:hover,.toolbar input:hover,.toolbar select:hover{border-color:#c5d0e0}
+th{
+  background:#f8fafd;
+  color:#728096;
+  border-bottom:1px solid #e3e8f0;
+  font-size:9px;
+}
+td{border-bottom-color:#edf1f6;color:#34445c}
+tbody tr:hover{background:#f7f9fe}
+.tablewrap{border-color:#e0e6ef;border-radius:12px}
+.linkbtn{color:#315bd6}
+.linkbtn:hover{background:#edf2ff;color:#244bb6}
+.listitem:hover{background:#f8faff}
+.listicon{background:#edf2ff;color:#315bd6;box-shadow:none}
+.bar{background:#edf1f7}
+.bar i{background:#315bd6}
+.status,.priority{border:1px solid transparent}
+.modalback{background:rgba(16,31,55,.56);backdrop-filter:blur(3px)}
+.modal{border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 20px 55px rgba(17,31,55,.2)}
+.close{background:#f4f6fa;color:#526178}
+.close:hover{background:#e8edf5;transform:none}
+.toast{border:1px solid rgba(255,255,255,.12);box-shadow:0 14px 35px rgba(17,31,55,.22)}
+footer{color:#8490a2}
+@media(hover:hover) and (min-width:741px){
+  .stat:hover,.card.panel:hover{
+    transform:translateY(-1px);
+    border-color:#cfd8e8;
+    box-shadow:0 5px 18px rgba(23,38,65,.045);
+  }
+}
+@media(max-width:740px){
+  .sidebar{
+    background:#fff;
+    border-right:1px solid #e4e9f1;
+    box-shadow:none;
+  }
+  .sidebar.open{box-shadow:18px 0 42px rgba(16,31,55,.14)}
+  .topbar{background:rgba(255,255,255,.96);border-bottom-color:#e4e9f1}
+  .content{padding-left:13px;padding-right:13px}
+  .panel{padding:15px}
+  .hero{border-radius:12px}
+}
