@@ -367,3 +367,6 @@ footer{color:#8490a2}
   .panel{padding:15px}
   .hero{border-radius:12px}
 }
+
+/* Keep the template-credit/demo note understated; tricolour accents stay limited. */
+.demo-note{border-image:none;border-top:3px solid #ff9933}
