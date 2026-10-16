@@ -23,5 +23,35 @@ class PriorityRecommendationTests(unittest.TestCase):
         self.assertTrue(result["priorityReason"])
 
 
+class EvidenceImageDataUrlTests(unittest.TestCase):
+    def test_accepts_bounded_jpeg_data_url(self):
+        import base64
+        from server import decode_image_data_url
+
+        sample = bytes([255, 216, 255]) + b"test-photo-bytes" + bytes([255, 217])
+        encoded = "data:image/jpeg;base64," + base64.b64encode(sample).decode("ascii")
+        self.assertEqual(decode_image_data_url(encoded), sample)
+
+    def test_rejects_non_jpeg_data_url(self):
+        from server import decode_image_data_url
+
+        with self.assertRaises(ValueError):
+            decode_image_data_url("data:image/png;base64,aW52YWxpZA==")
+
+    def test_rejects_invalid_jpeg_signature(self):
+        import base64
+        from server import decode_image_data_url
+
+        encoded = "data:image/jpeg;base64," + base64.b64encode(b"not-a-jpeg").decode("ascii")
+        with self.assertRaises(ValueError):
+            decode_image_data_url(encoded)
+
+    def test_rejects_oversized_data_url(self):
+        from server import decode_image_data_url
+
+        with self.assertRaises(ValueError):
+            decode_image_data_url("x" * 3_000_001)
+
+
 if __name__ == "__main__":
     unittest.main()
