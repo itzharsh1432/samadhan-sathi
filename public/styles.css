@@ -20,3 +20,138 @@
 .priority-high{background:#fff0df;color:#9b4b08}
 .priority-medium{background:#fff6d8;color:#85630b}
 .priority-low{background:#e6f5ed;color:#19704a}
+
+
+/* Samadhan Sathi visual refresh v1 */
+:root{
+  --bg:#f4f7fc;
+  --ink:#17243d;
+  --muted:#6e7c94;
+  --line:#e1e8f2;
+  --shadow:0 10px 28px rgba(22,43,83,.055);
+}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{
+  background:
+    radial-gradient(ellipse at 88% 4%,rgba(26,169,154,.07),transparent 32rem),
+    radial-gradient(ellipse at 3% 35%,rgba(73,116,196,.045),transparent 28rem),
+    var(--bg);
+}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button{transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}
+:focus-visible{outline:3px solid rgba(26,169,154,.48);outline-offset:3px}
+.sidebar{
+  background:
+    radial-gradient(ellipse at 0% 0%,rgba(45,208,190,.13),transparent 38%),
+    linear-gradient(165deg,#102247 0%,#10203f 54%,#0c1a35 100%);
+  box-shadow:8px 0 32px rgba(12,28,59,.06);
+}
+.brandmark{
+  box-shadow:0 7px 20px rgba(26,169,154,.25),inset 0 1px 0 rgba(255,255,255,.35);
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.brand:hover .brandmark{transform:translateY(-2px) rotate(-3deg);box-shadow:0 10px 24px rgba(26,169,154,.32)}
+.sidebar nav button{position:relative;transition:background .18s ease,color .18s ease,transform .18s ease}
+.sidebar nav button:hover{transform:translateX(2px);background:rgba(255,255,255,.09)}
+.sidebar nav button.active{background:linear-gradient(105deg,rgba(43,207,187,.18),rgba(255,255,255,.055));box-shadow:inset 3px 0 #43d4c3}
+.topbar{
+  background:rgba(255,255,255,.86);
+  box-shadow:0 4px 24px rgba(24,45,82,.035);
+}
+.content{max-width:1500px}
+.hero{
+  isolation:isolate;
+  border:1px solid rgba(255,255,255,.08);
+  background:
+    radial-gradient(circle at 78% 18%,rgba(54,213,192,.18),transparent 24rem),
+    linear-gradient(122deg,#102247 0%,#16335b 58%,#1b4666 100%);
+  box-shadow:0 18px 42px rgba(16,34,71,.13);
+}
+.hero::after{
+  content:"";
+  position:absolute;
+  width:300px;height:300px;
+  right:-115px;bottom:-205px;
+  border:1px solid rgba(126,230,213,.17);
+  border-radius:50%;
+  box-shadow:0 0 0 28px rgba(126,230,213,.025),0 0 0 58px rgba(126,230,213,.02);
+  pointer-events:none;
+  z-index:-1;
+}
+.hero h1{font-size:clamp(27px,2.6vw,36px);line-height:1.12;letter-spacing:-1.1px}
+.hero p{line-height:1.8}
+.artcard{box-shadow:0 18px 45px rgba(4,15,36,.28);transition:transform .28s ease,background .28s ease}
+.hero:hover .artcard{transform:translateY(-3px)}
+.orb{border-color:rgba(125,230,213,.25)}
+.primary{
+  background:linear-gradient(135deg,#20b9a7,#148e86);
+  box-shadow:0 6px 16px rgba(26,169,154,.19);
+}
+.primary:hover{background:linear-gradient(135deg,#1ab19f,#107f78);transform:translateY(-1px);box-shadow:0 9px 20px rgba(26,169,154,.25)}
+.outline{transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.outline:hover{background:#f7fbff;border-color:#b9d7d8;transform:translateY(-1px);box-shadow:0 5px 14px rgba(20,53,88,.06)}
+.card{
+  border-color:rgba(220,229,241,.92);
+  box-shadow:var(--shadow);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+}
+.stat{position:relative;overflow:hidden}
+.stat::before{
+  content:"";position:absolute;inset:0 0 auto;height:3px;
+  background:linear-gradient(90deg,#26b9a8,#74d9cf 55%,#d9f5ef);
+  opacity:.85;
+}
+.statvalue{font-variant-numeric:tabular-nums;letter-spacing:-1.2px}
+.panelhead h3{letter-spacing:-.15px}
+.pagehead h2{letter-spacing:-.7px}
+.notice{box-shadow:0 4px 14px rgba(121,85,28,.035)}
+.field input,.field select,.field textarea,.toolbar input,.toolbar select{
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.field input:hover,.field select:hover,.field textarea:hover,.toolbar input:hover,.toolbar select:hover{border-color:#bdcbdc}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#23a99b;box-shadow:0 0 0 4px rgba(26,169,154,.12)}
+.tablewrap{border-radius:14px}
+th{background:linear-gradient(180deg,#f8fafd,#f4f7fb);letter-spacing:.8px}
+tbody tr{transition:background-color .16s ease}
+tbody tr:hover{background:#f6fbfc}
+td{line-height:1.6}
+.status,.priority{letter-spacing:.1px}
+.linkbtn{border-radius:7px;padding:5px 7px;transition:background .16s ease,color .16s ease}
+.linkbtn:hover{background:#e8f8f5;color:#08756e}
+.listitem{transition:background-color .16s ease}
+.listitem:hover{background:linear-gradient(90deg,rgba(26,169,154,.035),transparent);border-radius:8px}
+.listicon{box-shadow:inset 0 0 0 1px rgba(26,169,154,.06)}
+.bar i{transform-origin:left center;animation:ss-bar-grow .72s cubic-bezier(.2,.75,.25,1) both}
+.toast.show{animation:ss-toast-in .24s ease-out both}
+.modalback.show .modal{animation:ss-modal-in .22s cubic-bezier(.2,.8,.2,1) both}
+.modal{border:1px solid rgba(255,255,255,.6);box-shadow:0 24px 75px rgba(5,19,45,.24)}
+.close:hover{background:#e5edf5;transform:rotate(3deg)}
+#pageContent>.hero,#pageContent>.pagehead,#pageContent>.grid,#pageContent>.card,#pageContent>.toolbar,#pageContent>.notice{
+  animation:ss-page-in .36s cubic-bezier(.2,.7,.2,1) both;
+}
+#pageContent>.pagehead{animation-delay:.025s}
+#pageContent>.grid{animation-delay:.055s}
+@keyframes ss-page-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ss-modal-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes ss-toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ss-bar-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(hover:hover) and (min-width:741px){
+  .stat:hover,.card.panel:hover{transform:translateY(-2px);border-color:#d5e3ed;box-shadow:0 14px 34px rgba(22,43,83,.085)}
+}
+@media(max-width:740px){
+  .hero{box-shadow:0 12px 28px rgba(16,34,71,.1)}
+  .hero::after{width:210px;height:210px;right:-100px;bottom:-145px}
+  .hero h1{font-size:clamp(26px,7vw,32px)}
+  .content{padding-bottom:20px}
+  .stat{border-radius:12px}
+  .topbar{backdrop-filter:blur(14px)}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+    transition-duration:.01ms!important;
+  }
+}
