@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Samadhan Sathi local full-stack server (Python standard library + SQLite)."""
-import hashlib, hmac, json, math, os, re, secrets, sqlite3, sys, time, uuid
+import base64, hashlib, hmac, json, math, os, re, secrets, sqlite3, sys, time, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
@@ -15,6 +15,24 @@ CATEGORIES = ['Roads & Potholes','Garbage & Sanitation','Water Supply','Drainage
 STATUSES = ['Submitted','Under Review','Assigned','In Progress','Resolved','Reopened']
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
+
+def decode_image_data_url(value):
+    """Accept a bounded JPEG data URL produced by the browser's image compressor."""
+    if not isinstance(value, str) or len(value) > 3_000_000:
+        raise ValueError('Photo is too large. Choose a smaller image and try again.')
+    match = re.fullmatch(r'data:image/jpeg;base64,([A-Za-z0-9+/]+={0,2})', value)
+    if not match:
+        raise ValueError('Please upload a JPEG photo.')
+    try:
+        binary = base64.b64decode(match.group(1), validate=True)
+    except Exception:
+        raise ValueError('The photo data is invalid.')
+    if not binary or len(binary) > 2 * 1024 * 1024:
+        raise ValueError('Photos must be smaller than 2 MB after compression.')
+    if not binary.startswith(bytes([255, 216, 255])) or not binary.endswith(bytes([255, 217])):
+        raise ValueError('The uploaded file is not a valid JPEG image.')
+    return binary
+
 def connect():
     db=sqlite3.connect(DB_PATH, timeout=10); db.row_factory=sqlite3.Row; db.execute('PRAGMA foreign_keys=ON'); return db
 
@@ -28,6 +46,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT, actor_role TEXT NOT NULL, complaint_id TEXT, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', metadata TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, complaint_id TEXT, title TEXT NOT NULL, message TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS complaint_support(id INTEGER PRIMARY KEY AUTOINCREMENT, complaint_id TEXT NOT NULL, user_id TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(complaint_id,user_id), FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS complaint_media(id TEXT PRIMARY KEY, complaint_id TEXT NOT NULL, media_type TEXT NOT NULL CHECK(media_type IN ('before','after')), content_type TEXT NOT NULL, image_data BLOB NOT NULL, original_name TEXT NOT NULL DEFAULT '', caption TEXT NOT NULL DEFAULT '', uploaded_by TEXT, uploader_role TEXT NOT NULL CHECK(uploader_role IN ('citizen','admin')), created_at TEXT NOT NULL, FOREIGN KEY(complaint_id) REFERENCES complaints(id) ON DELETE CASCADE, FOREIGN KEY(uploaded_by) REFERENCES users(id));
+        CREATE INDEX IF NOT EXISTS complaint_media_case_idx ON complaint_media(complaint_id, media_type, created_at DESC);
         CREATE INDEX IF NOT EXISTS complaints_user_idx ON complaints(user_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
         CREATE INDEX IF NOT EXISTS history_complaint_idx ON history(complaint_id, created_at DESC);
@@ -95,12 +115,25 @@ class Handler(BaseHTTPRequestHandler):
     def body(self):
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: length=0
-        if length>65536: raise ValueError('Request body is too large.')
+        # Evidence uploads carry a compressed Base64 JPEG; ordinary API requests stay small.
+        max_length = 3_000_000 if '/media' in self.path else 65536
+        if length > max_length: raise ValueError('Request body is too large.')
         raw=self.rfile.read(length) if length else b'{}'
         try: value=json.loads(raw.decode('utf-8'))
         except Exception: raise ValueError('Invalid JSON request.')
         if not isinstance(value,dict): raise ValueError('JSON body must be an object.')
         return value
+    def send_binary(self, status, content_type, data, cache_control='no-store'):
+        self.send_response(status)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Cache-Control', cache_control)
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Content-Length', str(len(data)))
+        if getattr(self, 'set_cookie', None): self.send_header('Set-Cookie', self.set_cookie)
+        self.end_headers()
+        if data: self.wfile.write(data)
+
     def cookie_token(self):
         for part in self.headers.get('Cookie','').split(';'):
             if part.strip().startswith('samadhan.sid='): return part.strip().split('=',1)[1]
@@ -146,6 +179,34 @@ class Handler(BaseHTTPRequestHandler):
                 with connect() as d: d.execute('SELECT 1')
                 return self.send_json(200,{'ok':True,'database':'connected','engine':'SQLite'})
             except Exception: return self.send_json(503,{'ok':False,'database':'unavailable'})
+        if path=='/api/public/resolved-cases':
+            # Only resolved cases are public here; reporter identity, description and exact location stay private.
+            with connect() as d:
+                rows=d.execute("""SELECT c.id,c.reference_id,c.title,c.category,c.locality,c.updated_at
+                    FROM complaints c
+                    WHERE c.status='Resolved' AND EXISTS (SELECT 1 FROM complaint_media m WHERE m.complaint_id=c.id)
+                    ORDER BY c.updated_at DESC LIMIT 24""").fetchall()
+                cases=[]
+                for row in rows:
+                    media_rows=d.execute("SELECT id,media_type,caption,created_at,uploader_role FROM complaint_media WHERE complaint_id=? ORDER BY created_at ASC",(row['id'],)).fetchall()
+                    photos=[{'id':m['id'],'type':m['media_type'],'caption':m['caption'],'createdAt':m['created_at'],'uploaderRole':m['uploader_role'],'url':'/api/public/media/'+m['id']} for m in media_rows]
+                    cases.append({'referenceId':row['reference_id'],'title':row['title'],'category':row['category'],'locality':row['locality'],'status':'Resolved','resolvedAt':row['updated_at'],'beforePhotos':[m for m in photos if m['type']=='before'],'afterPhotos':[m for m in photos if m['type']=='after']})
+            return self.send_json(200,{'cases':cases,'count':len(cases)})
+        match=re.fullmatch(r'/api/public/media/([^/]+)',path)
+        if match:
+            with connect() as d:
+                media=d.execute("SELECT m.content_type,m.image_data FROM complaint_media m JOIN complaints c ON c.id=m.complaint_id WHERE m.id=? AND c.status='Resolved'",(match.group(1),)).fetchone()
+            if not media:return self.send_json(404,{'error':'Public evidence photo not found.'})
+            return self.send_binary(200,media['content_type'],bytes(media['image_data']),'public, max-age=300')
+        match=re.fullmatch(r'/api/media/([^/]+)',path)
+        if match:
+            user=self.require_auth()
+            if not user:return
+            with connect() as d:
+                media=d.execute("SELECT m.content_type,m.image_data,c.user_id FROM complaint_media m JOIN complaints c ON c.id=m.complaint_id WHERE m.id=?",(match.group(1),)).fetchone()
+            if not media or (user['role']!='admin' and media['user_id']!=user['id']):
+                return self.send_json(404,{'error':'Evidence photo not found.'})
+            return self.send_binary(200,media['content_type'],bytes(media['image_data']),'private, no-store')
         # Public analytics intentionally expose only aggregate counts, never complaint text or account details.
         if path=='/api/public/insights':
             with connect() as d:
@@ -187,7 +248,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not row or (user['role']!='admin' and row['user_id']!=user['id']): return self.send_json(404,{'error':'Complaint not found.'})
                 if len(parts)>1 and parts[1]=='reopen': return self.send_json(405,{'error':'Use POST to request reopening.'})
                 history=d.execute('SELECT status,note,actor_role,created_at FROM history WHERE complaint_id=? ORDER BY id DESC',(row['id'],)).fetchall()
-            return self.send_json(200,{'complaint':public_complaint(row),'history':[dict(x) for x in history]})
+                media_rows=d.execute('SELECT id,media_type,caption,created_at,uploader_role FROM complaint_media WHERE complaint_id=? ORDER BY created_at DESC',(row['id'],)).fetchall()
+                media=[{'id':m['id'],'type':m['media_type'],'caption':m['caption'],'createdAt':m['created_at'],'uploaderRole':m['uploader_role'],'url':'/api/media/'+m['id']} for m in media_rows]
+            return self.send_json(200,{'complaint':public_complaint(row),'history':[dict(x) for x in history],'media':media})
         if path=='/api/admin/stats':
             if not self.require_auth(admin=True): return
             with connect() as d:
@@ -256,6 +319,25 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as d:d.execute('DELETE FROM sessions WHERE token=?',(token,))
             self.set_cookie='samadhan.sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'
             return self.send_json(204)
+        match=re.fullmatch(r'/api/complaints/([^/]+)/media',path)
+        if match and method=='POST':
+            ident=unquote(match.group(1))
+            media_type=str(data.get('type','')).strip().lower()
+            caption=str(data.get('caption','')).strip()
+            original_name=os.path.basename(str(data.get('filename','evidence.jpg')).replace('\\\\','/'))[:120] or 'evidence.jpg'
+            if media_type not in ('before','after') or len(caption)>200:
+                return self.send_json(400,{'error':'Choose before/after and keep the caption under 200 characters.'})
+            try: image_bytes=decode_image_data_url(data.get('imageData'))
+            except ValueError as e:return self.send_json(400,{'error':str(e)})
+            with connect() as d:
+                complaint=d.execute('SELECT id,user_id,reference_id FROM complaints WHERE reference_id=? OR id=?',(ident,ident)).fetchone()
+                if not complaint or (user['role']!='admin' and complaint['user_id']!=user['id']):
+                    return self.send_json(404,{'error':'Complaint not found.'})
+                media_id=str(uuid.uuid4()); stamp=now()
+                d.execute('INSERT INTO complaint_media(id,complaint_id,media_type,content_type,image_data,original_name,caption,uploaded_by,uploader_role,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',(media_id,complaint['id'],media_type,'image/jpeg',sqlite3.Binary(image_bytes),original_name,caption,user['id'],user['role'],stamp))
+                d.execute('UPDATE complaints SET updated_at=? WHERE id=?',(stamp,complaint['id']))
+                d.execute('INSERT INTO audit(actor_id,actor_role,complaint_id,action,reason,metadata,created_at) VALUES(?,?,?,?,?,?,?)',(user['id'],user['role'],complaint['id'],'Evidence photo uploaded',caption,json.dumps({'mediaType':media_type,'filename':original_name}),stamp))
+            return self.send_json(201,{'media':{'id':media_id,'type':media_type,'caption':caption,'createdAt':stamp,'uploaderRole':user['role'],'url':'/api/media/'+media_id}})
         if path=='/api/complaints' and method=='POST':
             if user['role']!='citizen':return self.send_json(403,{'error':'Only citizens can submit complaints.'})
             title=str(data.get('title','')).strip(); desc=str(data.get('description','')).strip(); cat=data.get('category'); locality=str(data.get('locality','')).strip(); landmark=str(data.get('landmark','')).strip()
